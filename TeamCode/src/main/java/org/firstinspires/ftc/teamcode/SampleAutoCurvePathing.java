@@ -30,8 +30,8 @@ public class SampleAutoCurvePathing extends OpMode {
 
     PathState pathState;
 
-    private final Pose startpose = new Pose(70.8224155578301, 94.5747185261003, Math.toRadians(138) );
-    private final Pose shootpose = new Pose(47.45496417604914, 94.90, Math.toRadians(138));
+    private final Pose startpose = new Pose(70.8224155578301, 70.5747185261003, Math.toRadians(138) );
+    private final Pose shootpose = new Pose(94.45496417604914, 94.90, Math.toRadians(138));
 
     private PathChain driveStartPosShootPos;
 
@@ -43,7 +43,7 @@ public class SampleAutoCurvePathing extends OpMode {
                         new BezierCurve(
                                 Arrays.asList(
                                         startpose,
-                                        new Pose(70.7, 90.3, 0),
+                                        new Pose(94, 70, 0),
                                         shootpose
                                 )
                         )
