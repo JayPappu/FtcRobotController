@@ -58,14 +58,14 @@ public class SampleAutoCurvePathing extends OpMode {
         switch(pathState) {
             case DRIVE_STARTPOS_SHOOT_POS:
                 follower.followPath(driveStartPosShootPos, true);
-                setPathState(PathState.SHOOT_PRELOAD); // reset the timer& make new state
+                setPathState(PathState.SHOOT_PRELOAD); // reset the timer & make new state
                 pathState = PathState.SHOOT_PRELOAD ;
                 break;
             case SHOOT_PRELOAD:
                 // TODO add logic to fluwheel shooter
                 // check is follower done it's path?
                 if (!follower.isBusy()) {
-                    // TODO add logoicto flywheel shooter
+                    // TODO add logic to flywheel shooter
                     telemetry.addLine ( "Done Path 1");
 
                 }
