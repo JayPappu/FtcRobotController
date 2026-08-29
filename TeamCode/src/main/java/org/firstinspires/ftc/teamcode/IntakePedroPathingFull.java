@@ -11,6 +11,8 @@ import com.pedropathing.geometry.BezierCurve;
 import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
+import com.pedropathing.util.Timer;
+
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
 @Autonomous(name = "IntakePedroPathingFull", group = "Autonomous")
@@ -20,6 +22,7 @@ public class IntakePedroPathingFull extends OpMode {
     public Follower follower;
     private int pathState;
     private Paths paths;
+    private Timer actionTimer;
 
     // motors
     private DcMotor intakeFront;
@@ -30,6 +33,7 @@ public class IntakePedroPathingFull extends OpMode {
     public void init() {
         panelsTelemetry = PanelsTelemetry.INSTANCE.getTelemetry();
         follower = Constants.createFollower(hardwareMap);
+        actionTimer = new Timer();
 
         follower.setStartingPose(startPose);
 
@@ -45,7 +49,7 @@ public class IntakePedroPathingFull extends OpMode {
 
     @Override
     public void start() {
-        pathState = 0;
+        setPathState(0);
     }
 
     @Override
@@ -78,7 +82,6 @@ public class IntakePedroPathingFull extends OpMode {
         public PathChain openGate;
 
         public Paths(Follower follower) {
-            // Curves from start position toward the first ball/intake alignment position
             moveToFirstPickupApproach = follower.pathBuilder()
                     .addPath(
                             new BezierCurve(
@@ -90,7 +93,6 @@ public class IntakePedroPathingFull extends OpMode {
                     .setLinearHeadingInterpolation(Math.toRadians(90), Math.toRadians(180))
                     .build();
 
-            // Drives straight west slowly while actively running the intake
             intakeFirstBall = follower.pathBuilder()
                     .addPath(
                             new BezierLine(
@@ -101,7 +103,6 @@ public class IntakePedroPathingFull extends OpMode {
                     .setConstantHeadingInterpolation(Math.toRadians(180))
                     .build();
 
-            // Travels diagonally across the field toward the scoring/deposit zone approach
             moveToScoringPosition = follower.pathBuilder()
                     .addPath(
                             new BezierCurve(
@@ -113,7 +114,6 @@ public class IntakePedroPathingFull extends OpMode {
                     .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(180))
                     .build();
 
-            // Curves toward the scoring location and aligns for outtaking/scoring
             scoreOrDepositFirstElement = follower.pathBuilder()
                     .addPath(
                             new BezierLine(
@@ -124,7 +124,6 @@ public class IntakePedroPathingFull extends OpMode {
                     .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(135))
                     .build();
 
-            // Navigates away from the deposit area for the next game element/artifact movement
             secondArtifactMove = follower.pathBuilder()
                     .addPath(
                             new BezierCurve(
@@ -136,7 +135,6 @@ public class IntakePedroPathingFull extends OpMode {
                     .setLinearHeadingInterpolation(Math.toRadians(135), Math.toRadians(180))
                     .build();
 
-            // Intakes the second artifact
             intakeSecondBall = follower.pathBuilder()
                     .addPath(
                             new BezierLine(
@@ -147,7 +145,6 @@ public class IntakePedroPathingFull extends OpMode {
                     .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(180))
                     .build();
 
-            // Navigates away from the intake area to scoring location
             moveToScoringPosition2 = follower.pathBuilder()
                     .addPath(
                             new BezierCurve(
@@ -159,7 +156,6 @@ public class IntakePedroPathingFull extends OpMode {
                     .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(135))
                     .build();
 
-            // Move to the third set of artifacts
             thirdArtifactMove = follower.pathBuilder()
                     .addPath(
                             new BezierCurve(
@@ -171,7 +167,6 @@ public class IntakePedroPathingFull extends OpMode {
                     .setLinearHeadingInterpolation(Math.toRadians(135), Math.toRadians(180))
                     .build();
 
-            // Intakes the third artifact
             intakeThirdBall = follower.pathBuilder()
                     .addPath(
                             new BezierLine(
@@ -182,7 +177,6 @@ public class IntakePedroPathingFull extends OpMode {
                     .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(180))
                     .build();
 
-            // Move to scoring location for third ball
             moveToScoringPosition3 = follower.pathBuilder()
                     .addPath(
                             new BezierLine(
@@ -227,7 +221,7 @@ public class IntakePedroPathingFull extends OpMode {
             case 1:
                 if (!follower.isBusy()) {
                     intakeFront.setPower(1.0);
-                    follower.setMaxPower(0.1);
+                    follower.setMaxPower(0.25);
                     follower.followPath(paths.intakeFirstBall);
                     setPathState(2);
                 }
@@ -236,7 +230,7 @@ public class IntakePedroPathingFull extends OpMode {
             case 2:
                 if (!follower.isBusy()) {
                     intakeFront.setPower(0.0);
-                    follower.setMaxPower(.6);
+                    follower.setMaxPower(1.0);
                     follower.followPath(paths.moveToScoringPosition);
                     setPathState(3);
                 }
@@ -244,24 +238,28 @@ public class IntakePedroPathingFull extends OpMode {
 
             case 3:
                 if (!follower.isBusy()) {
-                    intakeFront.setPower(-1.0);
                     follower.followPath(paths.scoreOrDepositFirstElement);
                     setPathState(4);
                 }
                 break;
 
-            case 4:
+            case 4: // Wait until robot reaches the end of scoreOrDepositFirstElement
                 if (!follower.isBusy()) {
-                    intakeFront.setPower(0.0);
-                    follower.followPath(paths.secondArtifactMove);
-                    setPathState(5);
+                    intakeFront.setPower(-1.0); // Start outtaking ONLY after path reaches target
+                    if (actionTimer.getElapsedTimeSeconds() > 0.75) { // Adjust score duration here
+                        intakeFront.setPower(0.0);
+                        follower.followPath(paths.secondArtifactMove);
+                        setPathState(5);
+                    }
+                } else {
+                    actionTimer.resetTimer();
                 }
                 break;
 
             case 5:
                 if (!follower.isBusy()) {
                     intakeFront.setPower(1.0);
-                    follower.setMaxPower(0.1);
+                    follower.setMaxPower(0.25);
                     follower.followPath(paths.intakeSecondBall);
                     setPathState(6);
                 }
@@ -269,25 +267,30 @@ public class IntakePedroPathingFull extends OpMode {
 
             case 6:
                 if (!follower.isBusy()) {
-                    intakeFront.setPower(-1.0);
-                    follower.setMaxPower(.6);
+                    intakeFront.setPower(0.0);
+                    follower.setMaxPower(1.0);
                     follower.followPath(paths.moveToScoringPosition2);
                     setPathState(7);
                 }
                 break;
 
-            case 7:
+            case 7: // Wait until robot reaches scoring position 2
                 if (!follower.isBusy()) {
-                    intakeFront.setPower(0.0);
-                    follower.followPath(paths.thirdArtifactMove);
-                    setPathState(8);
+                    intakeFront.setPower(-1.0);
+                    if (actionTimer.getElapsedTimeSeconds() > 0.75) {
+                        intakeFront.setPower(0.0);
+                        follower.followPath(paths.thirdArtifactMove);
+                        setPathState(8);
+                    }
+                } else {
+                    actionTimer.resetTimer();
                 }
                 break;
 
             case 8:
                 if (!follower.isBusy()) {
                     intakeFront.setPower(1.0);
-                    follower.setMaxPower(0.1);
+                    follower.setMaxPower(0.25);
                     follower.followPath(paths.intakeThirdBall);
                     setPathState(9);
                 }
@@ -295,18 +298,23 @@ public class IntakePedroPathingFull extends OpMode {
 
             case 9:
                 if (!follower.isBusy()) {
-                    intakeFront.setPower(-1.0);
-                    follower.setMaxPower(.6);
+                    intakeFront.setPower(0.0);
+                    follower.setMaxPower(1.0);
                     follower.followPath(paths.moveToScoringPosition3);
                     setPathState(10);
                 }
                 break;
 
-            case 10:
+            case 10: // Wait until robot reaches scoring position 3
                 if (!follower.isBusy()) {
-                    intakeFront.setPower(0.0);
-                    follower.followPath(paths.moveToGate);
-                    setPathState(11);
+                    intakeFront.setPower(-1.0);
+                    if (actionTimer.getElapsedTimeSeconds() > 0.75) {
+                        intakeFront.setPower(0.0);
+                        follower.followPath(paths.moveToGate);
+                        setPathState(11);
+                    }
+                } else {
+                    actionTimer.resetTimer();
                 }
                 break;
 
@@ -327,5 +335,6 @@ public class IntakePedroPathingFull extends OpMode {
 
     public void setPathState(int state) {
         pathState = state;
+        actionTimer.resetTimer();
     }
 }
