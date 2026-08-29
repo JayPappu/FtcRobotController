@@ -13,16 +13,16 @@ import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
-@Autonomous(name = "IntakePedropathing", group = "Autonomous")
+@Autonomous(name = "IntakePedroPathingFull", group = "Autonomous")
 @Configurable
-public class IntakePedropathing extends OpMode {
+public class IntakePedroPathingFull extends OpMode {
     private TelemetryManager panelsTelemetry;
     public Follower follower;
     private int pathState;
     private Paths paths;
 
     // motors
-    private DcMotor frontIntake;
+    private DcMotor intakeFront;
 
     private final Pose startPose = new Pose(58.3, 8.5, Math.toRadians(90));
 
@@ -36,8 +36,8 @@ public class IntakePedropathing extends OpMode {
         paths = new Paths(follower);
         pathState = 0;
 
-        frontIntake = hardwareMap.get(DcMotor.class, "frontIntake");
-        frontIntake.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        intakeFront = hardwareMap.get(DcMotor.class, "intakeFront");
+        intakeFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         panelsTelemetry.debug("Status", "Initialized");
         panelsTelemetry.update(telemetry);
@@ -77,7 +77,6 @@ public class IntakePedropathing extends OpMode {
         public PathChain moveToGate;
         public PathChain openGate;
 
-
         public Paths(Follower follower) {
             // Curves from start position toward the first ball/intake alignment position
             moveToFirstPickupApproach = follower.pathBuilder()
@@ -90,6 +89,7 @@ public class IntakePedropathing extends OpMode {
                     )
                     .setLinearHeadingInterpolation(Math.toRadians(90), Math.toRadians(180))
                     .build();
+
             // Drives straight west slowly while actively running the intake
             intakeFirstBall = follower.pathBuilder()
                     .addPath(
@@ -135,32 +135,35 @@ public class IntakePedropathing extends OpMode {
                     )
                     .setLinearHeadingInterpolation(Math.toRadians(135), Math.toRadians(180))
                     .build();
-            //intakes the second artifact
+
+            // Intakes the second artifact
             intakeSecondBall = follower.pathBuilder()
                     .addPath(
-                            new BezierCurve(
+                            new BezierLine(
                                     new Pose(33.3, 58.4),
                                     new Pose(14.2, 58.6)
                             )
                     )
                     .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(180))
                     .build();
-            // Navigates away from the deposit area for the next game element/artifact movement
+
+            // Navigates away from the intake area to scoring location
             moveToScoringPosition2 = follower.pathBuilder()
                     .addPath(
                             new BezierCurve(
-                                    new Pose(33.3, 58.4),
+                                    new Pose(14.2, 58.6),
                                     new Pose(70, 70),
                                     new Pose(34.5, 104.7)
                             )
                     )
                     .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(135))
                     .build();
-            //move to the third set of artifacts
+
+            // Move to the third set of artifacts
             thirdArtifactMove = follower.pathBuilder()
                     .addPath(
                             new BezierCurve(
-                                    new Pose(35.4, 104.7),
+                                    new Pose(34.5, 104.7),
                                     new Pose(51.2, 90),
                                     new Pose(34.5, 82)
                             )
@@ -168,9 +171,10 @@ public class IntakePedropathing extends OpMode {
                     .setLinearHeadingInterpolation(Math.toRadians(135), Math.toRadians(180))
                     .build();
 
+            // Intakes the third artifact
             intakeThirdBall = follower.pathBuilder()
                     .addPath(
-                            new BezierCurve(
+                            new BezierLine(
                                     new Pose(34.5, 82),
                                     new Pose(14, 82.2)
                             )
@@ -178,11 +182,12 @@ public class IntakePedropathing extends OpMode {
                     .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(180))
                     .build();
 
+            // Move to scoring location for third ball
             moveToScoringPosition3 = follower.pathBuilder()
                     .addPath(
-                            new BezierCurve(
+                            new BezierLine(
                                     new Pose(14, 82.2),
-                                    new Pose(35,104.1 )
+                                    new Pose(35, 104.1)
                             )
                     )
                     .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(135))
@@ -209,7 +214,6 @@ public class IntakePedropathing extends OpMode {
                     )
                     .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(180))
                     .build();
-
         }
     }
 
@@ -222,8 +226,8 @@ public class IntakePedropathing extends OpMode {
 
             case 1:
                 if (!follower.isBusy()) {
-                    frontIntake.setPower(1.0);
-                    follower.setMaxPower(0.25);
+                    intakeFront.setPower(1.0);
+                    follower.setMaxPower(0.1);
                     follower.followPath(paths.intakeFirstBall);
                     setPathState(2);
                 }
@@ -231,8 +235,8 @@ public class IntakePedropathing extends OpMode {
 
             case 2:
                 if (!follower.isBusy()) {
-                    frontIntake.setPower(0.0);
-                    follower.setMaxPower(1.0);
+                    intakeFront.setPower(0.0);
+                    follower.setMaxPower(.6);
                     follower.followPath(paths.moveToScoringPosition);
                     setPathState(3);
                 }
@@ -240,15 +244,15 @@ public class IntakePedropathing extends OpMode {
 
             case 3:
                 if (!follower.isBusy()) {
+                    intakeFront.setPower(-1.0);
                     follower.followPath(paths.scoreOrDepositFirstElement);
-                    frontIntake.setPower(-1.0);
                     setPathState(4);
                 }
                 break;
 
             case 4:
                 if (!follower.isBusy()) {
-                    frontIntake.setPower(0.0);
+                    intakeFront.setPower(0.0);
                     follower.followPath(paths.secondArtifactMove);
                     setPathState(5);
                 }
@@ -256,11 +260,67 @@ public class IntakePedropathing extends OpMode {
 
             case 5:
                 if (!follower.isBusy()) {
+                    intakeFront.setPower(1.0);
+                    follower.setMaxPower(0.1);
+                    follower.followPath(paths.intakeSecondBall);
                     setPathState(6);
                 }
                 break;
 
             case 6:
+                if (!follower.isBusy()) {
+                    intakeFront.setPower(-1.0);
+                    follower.setMaxPower(.6);
+                    follower.followPath(paths.moveToScoringPosition2);
+                    setPathState(7);
+                }
+                break;
+
+            case 7:
+                if (!follower.isBusy()) {
+                    intakeFront.setPower(0.0);
+                    follower.followPath(paths.thirdArtifactMove);
+                    setPathState(8);
+                }
+                break;
+
+            case 8:
+                if (!follower.isBusy()) {
+                    intakeFront.setPower(1.0);
+                    follower.setMaxPower(0.1);
+                    follower.followPath(paths.intakeThirdBall);
+                    setPathState(9);
+                }
+                break;
+
+            case 9:
+                if (!follower.isBusy()) {
+                    intakeFront.setPower(-1.0);
+                    follower.setMaxPower(.6);
+                    follower.followPath(paths.moveToScoringPosition3);
+                    setPathState(10);
+                }
+                break;
+
+            case 10:
+                if (!follower.isBusy()) {
+                    intakeFront.setPower(0.0);
+                    follower.followPath(paths.moveToGate);
+                    setPathState(11);
+                }
+                break;
+
+            case 11:
+                if (!follower.isBusy()) {
+                    follower.followPath(paths.openGate);
+                    setPathState(12);
+                }
+                break;
+
+            case 12:
+                if (!follower.isBusy()) {
+                    intakeFront.setPower(0.0);
+                }
                 break;
         }
     }
